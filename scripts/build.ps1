@@ -52,5 +52,6 @@ if ($Package) {
     New-Item -ItemType Directory -Force $stage | Out-Null
     Copy-Item -LiteralPath $dll -Destination $stage
     Copy-Item -LiteralPath (Join-Path $repoRoot 'README.md'), (Join-Path $repoRoot 'LICENSE.txt') -Destination $stage
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'assets') -Destination $stage -Recurse
     Compress-Archive -Path $stage -DestinationPath (Join-Path $repoRoot "dist/AwWatcherNPP-0.1.0-$Platform.zip") -Force
 }

@@ -8,6 +8,7 @@ Track the files, projects, and programming languages you work on in Notepad++ wi
 - Records the active file, project name, and editor language.
 - Detects Git, Mercurial, and Subversion project roots, including Git worktrees.
 - Supports custom language names for file extensions.
+- Includes a settings dialog with an editable language-mapping table.
 - Tracks only while Notepad++ is in the foreground and pauses after inactivity.
 - Sends heartbeats in the background and retries when ActivityWatch is unavailable.
 - Provides 64-bit and 32-bit plugins for Windows.
@@ -45,9 +46,15 @@ Recorded events appear in **Raw Data** under `aw-watcher-notepadpp_<hostname>`.
 
 ## Settings
 
-Choose **Plugins → ActivityWatch → Edit settings**, save the JSON file, and restart
-Notepad++ to apply changes. The plugin creates `AwWatcherNPP.json` in Notepad++'s
-plugin configuration directory on first launch.
+Choose **Plugins → ActivityWatch → Settings…** to change tracking options and
+language overrides. Use **Add** to create a mapping or **Remove** to delete selected
+rows. Click **Save** to apply changes immediately; **Cancel** leaves your settings
+unchanged. Duplicate extensions, incomplete rows, and invalid intervals are rejected.
+
+![ActivityWatch settings dialog with a language-mapping table](assets/settings.png)
+
+The plugin saves settings in `AwWatcherNPP.json` in Notepad++'s plugin configuration
+directory. Existing JSON settings remain supported. For example:
 
 ```json
 {
@@ -69,7 +76,8 @@ plugin configuration directory on first launch.
   heartbeat interval and at most 120 seconds.
 - `IdleSeconds`: pause after this many seconds without Windows input.
 - `QueueCapacity`: maximum number of pending heartbeats, from 1 to 10,000.
-- `Languages`: extension overrides, without a leading dot; matching ignores case.
+- `Languages`: extension overrides; matching ignores case. A leading dot is optional
+  in the table and removed on save. Wildcards and compound extensions are rejected.
 - `Testing`: selects port `5666` when `Port` is left at `5600`.
 
 Set `Languages` to `{}` to use the editor's language names without overrides.
@@ -86,7 +94,8 @@ Events use ActivityWatch's `app.editor.activity` bucket type and contain `file`,
 `project`, and `language` fields. Combine them with ActivityWatch's window and AFK
 information when calculating time; overlapping watcher totals should not be added.
 
-Pending heartbeats are kept in memory and retried in order. A full queue rejects
+Pending heartbeats are kept in memory and retried in order, including when settings
+are changed. A full queue rejects
 new events, and pending events are lost when Notepad++ exits or crashes.
 
 ## Troubleshooting

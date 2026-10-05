@@ -88,11 +88,15 @@ namespace AwWatcherNPP
         public int Dropped { get; private set; }
         public int PendingCount { get { lock (gate) return pending.Count; } }
 
-        public HeartbeatWorker(ActivityWatchClient client, int capacity, Action<string> report)
+        public HeartbeatWorker(ActivityWatchClient client, int capacity, Action<string> report,
+            IEnumerable<EditorActivity> initialPending = null)
         {
             this.client = client;
             this.capacity = capacity;
             this.report = report;
+            // Preserve an existing backlog even if the user reduces the queue capacity.
+            if (initialPending != null)
+                foreach (var activity in initialPending) pending.Enqueue(activity);
             thread = new Thread(Run) { IsBackground = true, Name = "ActivityWatch heartbeat sender" };
             thread.Start();
         }
@@ -150,6 +154,12 @@ namespace AwWatcherNPP
             client.Dispose();
             wake.Dispose();
             stop.Dispose();
+        }
+
+        public EditorActivity[] TakePendingAndDispose()
+        {
+            Dispose();
+            lock (gate) return pending.ToArray();
         }
     }
 }

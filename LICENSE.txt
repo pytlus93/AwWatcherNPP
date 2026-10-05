@@ -1,6 +1,6 @@
 BSD 3-Clause License
 
-Copyright (c) 2026 Filip Vrba.
+Copyright (c) 2026 Filip Vrba <pytlus93@seznam.cz>.
 
 AwWatcherNPP is an independently maintained ActivityWatch plugin. Portions of
 its plugin integration were adapted from the Notepad++ plugin by Alan Hamlett:

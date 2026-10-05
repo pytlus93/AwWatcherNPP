@@ -1,5 +1,5 @@
 // Adapted plugin integration; see LICENSE.txt for provenance and license terms.
-// Copyright (c) 2014 Alan Hamlett. Copyright (c) 2026 Filip Vrba.
+// Copyright (c) 2014 Alan Hamlett. Copyright (c) 2026 Filip Vrba <pytlus93@seznam.cz>.
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -71,7 +71,7 @@ namespace AwWatcherNPP
             {
                 if (functions == IntPtr.Zero)
                 {
-                    var labels = new[] { "Edit settings (restart required)", "Open ActivityWatch", "Status" };
+                    var labels = new[] { "Settings...", "Open ActivityWatch", "Status" };
                     var size = Marshal.SizeOf(typeof(FunctionItem));
                     functions = Marshal.AllocHGlobal(size * commands.Length);
                     for (int i = 0; i < commands.Length; i++)
@@ -114,19 +114,36 @@ namespace AwWatcherNPP
         private static void Initialize()
         {
             if (worker != null) return;
+            EnsureConfigPath();
+            ApplySettings(Settings.Load(configPath)); // invalid config disables tracking; never silently resets it
+        }
+
+        private static void EnsureConfigPath()
+        {
+            if (configPath != null) return;
             var directory = new StringBuilder(32768);
             SendMessage(host.Window, NppMessage + 46, new IntPtr(directory.Capacity), directory);
             var root = directory.Length > 0 ? directory.ToString() :
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AwWatcherNPP");
             configPath = Path.Combine(root, "AwWatcherNPP.json");
-            settings = Settings.Load(configPath); // invalid config disables tracking; never silently resets it
-            tracker = new ActivityTracker(settings);
-            worker = new HeartbeatWorker(new ActivityWatchClient(settings, Environment.MachineName),
-                settings.QueueCapacity, Report);
-            timer = new Timer { Interval = 1000 };
-            timer.Tick += Tick;
+        }
+
+        private static void ApplySettings(Settings value)
+        {
+            value.Validate();
+            var client = new ActivityWatchClient(value, Environment.MachineName);
+            timer?.Stop();
+            var pending = worker?.TakePendingAndDispose();
+            worker = new HeartbeatWorker(client, value.QueueCapacity, Report, pending);
+            settings = value;
+            tracker = new ActivityTracker(value);
+            if (timer == null)
+            {
+                timer = new Timer { Interval = 1000 };
+                timer.Tick += Tick;
+            }
             timer.Start();
-            status = "Tracking enabled on loopback port " + settings.EffectivePort + ".";
+            status = "Tracking enabled on loopback port " + value.EffectivePort + ".";
             Sample();
         }
 
@@ -183,8 +200,29 @@ namespace AwWatcherNPP
 
         private static void EditSettings()
         {
-            try { if (configPath != null) Process.Start("notepad.exe", "\"" + configPath + "\""); }
+            try
+            {
+                EnsureConfigPath();
+                var current = settings ?? new Settings();
+                string warning = null;
+                try { current = Settings.Load(configPath); }
+                catch (Exception ex) when (ex is ArgumentException || ex is IOException || ex is UnauthorizedAccessException)
+                {
+                    warning = "Saved settings could not be loaded. Review all values before saving.";
+                }
+                using (var dialog = new SettingsForm(current, value => {
+                    value.Save(configPath);
+                    ApplySettings(value);
+                }, warning))
+                    dialog.ShowDialog(new HostWindow(host.Window));
+            }
             catch (Exception ex) { Report("Cannot open settings: " + ex.GetType().Name); }
+        }
+
+        private sealed class HostWindow : IWin32Window
+        {
+            public IntPtr Handle { get; }
+            public HostWindow(IntPtr handle) { Handle = handle; }
         }
 
         private static void OpenDashboard()
