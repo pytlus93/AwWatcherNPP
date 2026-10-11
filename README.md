@@ -13,7 +13,7 @@ Track the files, projects, and programming languages you work on in Notepad++ wi
 - Sends heartbeats in the background and retries when ActivityWatch is unavailable.
 - Provides 64-bit and 32-bit plugins for Windows.
 
-The plugin records file paths and metadata, never document contents. It sends data
+The plugin records enabled file metadata, never document contents. It sends data
 only to the local ActivityWatch server; no account or API key is required.
 
 ## Requirements
@@ -87,16 +87,24 @@ Set `Languages` to `{}` to use the editor's language names without overrides.
 File and language changes produce an immediate heartbeat. While focused, reading
 is counted until the idle timeout. Switching to another application pauses tracking.
 
-The project name comes from the nearest version-control root, or the file's parent
+When enabled, the project path comes from the nearest version-control root, or the file's parent
 folder when there is no root. Unsaved buffers use their tab label and an empty project.
 
 Events use ActivityWatch's `app.editor.activity` bucket type and contain `file`,
-`project`, and `language` fields. Combine them with ActivityWatch's window and AFK
+`project`, and `language` fields plus the workspace-required `title`. See [data contract](DATA-CONTRACT.md) for settings, migration and privacy. Combine them with ActivityWatch's window and AFK
 information when calculating time; overlapping watcher totals should not be added.
 
 Pending heartbeats are kept in memory and retried in order, including when settings
 are changed. A full queue rejects
 new events, and pending events are lost when Notepad++ exits or crashes.
+
+Focus/idle returns and sampling gaps larger than the heartbeat interval plus one
+second begin a new interval with `pulsetime=0`. Queue overflow also marks the next
+accepted observation as a boundary. Retries retain observation UTC timestamps.
+Server outages with uninterrupted, successfully queued observations retain observed
+activity; collection gaps are not filled with stale observations.
+
+See [validation evidence and limitations](VALIDATION.md).
 
 ## Troubleshooting
 
