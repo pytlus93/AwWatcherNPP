@@ -108,7 +108,7 @@ namespace AwWatcherNPP
                         Sample(); break;
                 }
             }
-            catch (Exception ex) { Report("Plugin notification failed: " + ex.GetType().Name); }
+            catch (Exception ex) { ResetTracking(); Report("Plugin notification failed: " + ex.GetType().Name); }
         }
 
         private static void Initialize()
@@ -131,9 +131,17 @@ namespace AwWatcherNPP
         private static void ApplySettings(Settings value)
         {
             value.Validate();
-            var client = new ActivityWatchClient(value, Environment.MachineName);
             timer?.Stop();
             var pending = worker?.TakePendingAndDispose();
+            worker = null;
+            settings = value;
+            tracker = new ActivityTracker(value);
+            if (!value.Enabled)
+            {
+                status = "Tracking stopped by settings; pending observations discarded.";
+                return;
+            }
+            var client = new ActivityWatchClient(value, Environment.MachineName);
             worker = new HeartbeatWorker(client, value.QueueCapacity, Report, pending);
             settings = value;
             tracker = new ActivityTracker(value);
@@ -150,7 +158,12 @@ namespace AwWatcherNPP
         private static void Tick(object sender, EventArgs args)
         {
             try { Sample(); }
-            catch (Exception ex) { Report("Sampling failed: " + ex.GetType().Name); }
+            catch (Exception ex) { ResetTracking(); Report("Sampling failed: " + ex.GetType().Name); }
+        }
+
+        private static void ResetTracking()
+        {
+            tracker?.Observe(null, null, false, DateTimeOffset.UtcNow, elapsed.ElapsedMilliseconds);
         }
 
         private static void Sample()

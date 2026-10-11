@@ -9,6 +9,13 @@ namespace AwWatcherNPP
 {
     public sealed class SettingsForm : Form
     {
+        internal readonly CheckBox TrackingEnabled = new CheckBox { Text = "Enable tracking", AutoSize = true };
+        internal readonly ComboBox PayloadMode = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 85 };
+        internal readonly CheckBox IncludeFile = new CheckBox { Text = "File / title", AutoSize = true };
+        internal readonly CheckBox IncludeProjectPath = new CheckBox { Text = "Project path", AutoSize = true };
+        internal readonly CheckBox IncludeLanguage = new CheckBox { Text = "Language", AutoSize = true };
+        internal readonly CheckBox IncludeFilename = new CheckBox { Text = "Filename", AutoSize = true };
+        internal readonly CheckBox IncludeProjectName = new CheckBox { Text = "Project name", AutoSize = true };
         private readonly NumericUpDown port = Number(1, 65535);
         private readonly NumericUpDown frequency = Number(1, 60);
         private readonly NumericUpDown pulse = Number(1, 120);
@@ -28,7 +35,7 @@ namespace AwWatcherNPP
             Text = "ActivityWatch settings";
             Font = new Font("Segoe UI", 9F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(740, 640);
+            ClientSize = new Size(840, 740);
             MinimumSize = new Size(650, 630);
             StartPosition = FormStartPosition.CenterParent;
             ShowInTaskbar = false;
@@ -36,10 +43,11 @@ namespace AwWatcherNPP
             MaximizeBox = false;
 
             var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(20),
-                ColumnCount = 1, RowCount = 6 };
+                ColumnCount = 1, RowCount = 7 };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 56));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 180));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
@@ -72,6 +80,32 @@ namespace AwWatcherNPP
             tracking.Controls.Add(fields);
             layout.Controls.Add(tracking, 0, 1);
 
+            TrackingEnabled.Checked = current.Enabled;
+            PayloadMode.Items.AddRange(new object[] { "strict", "extended" });
+            PayloadMode.SelectedItem = current.PayloadMode;
+            IncludeFile.Checked = current.IncludeFile;
+            IncludeProjectPath.Checked = current.IncludeProjectPath;
+            IncludeLanguage.Checked = current.IncludeLanguage;
+            IncludeFilename.Checked = current.IncludeFilename;
+            IncludeProjectName.Checked = current.IncludeProjectName;
+            var payload = new FlowLayoutPanel { Dock = DockStyle.Fill };
+            payload.Controls.Add(new Label { Text = "Payload (strict includes workspace title)", AutoSize = true });
+            payload.Controls.Add(PayloadMode);
+            payload.Controls.Add(TrackingEnabled);
+            payload.Controls.Add(IncludeFile);
+            payload.Controls.Add(IncludeProjectPath);
+            payload.Controls.Add(IncludeLanguage);
+            payload.Controls.Add(IncludeFilename);
+            payload.Controls.Add(IncludeProjectName);
+            Action updatePayload = () => {
+                IncludeFilename.Enabled = PayloadMode.Text == "extended" && IncludeFile.Checked;
+                IncludeProjectName.Enabled = PayloadMode.Text == "extended";
+            };
+            PayloadMode.SelectedIndexChanged += (sender, args) => updatePayload();
+            IncludeFile.CheckedChanged += (sender, args) => updatePayload();
+            updatePayload();
+            layout.Controls.Add(payload, 0, 2);
+
             var languages = new GroupBox { Text = "Language overrides", Dock = DockStyle.Fill, Padding = new Padding(12) };
             LanguageTable.Dock = DockStyle.Fill;
             LanguageTable.BackgroundColor = SystemColors.Window;
@@ -91,7 +125,7 @@ namespace AwWatcherNPP
             foreach (var mapping in current.Languages.OrderBy(p => p.Key, StringComparer.OrdinalIgnoreCase))
                 LanguageTable.Rows.Add(mapping.Key, mapping.Value);
             languages.Controls.Add(LanguageTable);
-            layout.Controls.Add(languages, 0, 2);
+            layout.Controls.Add(languages, 0, 3);
 
             var actions = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Margin = Padding.Empty };
             actions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -113,8 +147,8 @@ namespace AwWatcherNPP
             rowActions.Controls.Add(add);
             rowActions.Controls.Add(remove);
             actions.Controls.Add(rowActions, 1, 0);
-            layout.Controls.Add(actions, 0, 3);
-            layout.Controls.Add(error, 0, 4);
+            layout.Controls.Add(actions, 0, 4);
+            layout.Controls.Add(error, 0, 5);
 
             var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft,
                 WrapContents = false, Margin = Padding.Empty };
@@ -123,7 +157,7 @@ namespace AwWatcherNPP
             apply.Click += (sender, args) => { if (TrySave()) { DialogResult = DialogResult.OK; Close(); } };
             buttons.Controls.Add(cancel);
             buttons.Controls.Add(apply);
-            layout.Controls.Add(buttons, 0, 5);
+            layout.Controls.Add(buttons, 0, 6);
             AcceptButton = apply;
             CancelButton = cancel;
 
@@ -165,7 +199,10 @@ namespace AwWatcherNPP
             var rows = LanguageTable.Rows.Cast<DataGridViewRow>().Where(row => !row.IsNewRow)
                 .Select(row => new KeyValuePair<string, string>(Convert.ToString(row.Cells[0].Value),
                     Convert.ToString(row.Cells[1].Value)));
-            var value = new Settings { Port = (int)port.Value, Testing = testing.Checked,
+            var value = new Settings { Enabled = TrackingEnabled.Checked, PayloadMode = PayloadMode.Text,
+                IncludeFile = IncludeFile.Checked, IncludeProjectPath = IncludeProjectPath.Checked,
+                IncludeLanguage = IncludeLanguage.Checked, IncludeFilename = IncludeFilename.Checked,
+                IncludeProjectName = IncludeProjectName.Checked, Port = (int)port.Value, Testing = testing.Checked,
                 FrequencySeconds = (int)frequency.Value, PulseTimeSeconds = (int)pulse.Value,
                 IdleSeconds = (int)idle.Value, QueueCapacity = (int)capacity.Value,
                 Languages = Settings.BuildLanguages(rows) };

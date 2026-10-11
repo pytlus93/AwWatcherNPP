@@ -8,6 +8,13 @@ namespace AwWatcherNPP
 {
     public sealed class Settings
     {
+        public bool Enabled { get; set; } = true;
+        public string PayloadMode { get; set; } = "strict";
+        public bool IncludeFile { get; set; } = true;
+        public bool IncludeProjectPath { get; set; }
+        public bool IncludeLanguage { get; set; } = true;
+        public bool IncludeFilename { get; set; }
+        public bool IncludeProjectName { get; set; }
         public int Port { get; set; } = 5600;
         public bool Testing { get; set; }
         public int FrequencySeconds { get; set; } = 5;
@@ -21,6 +28,8 @@ namespace AwWatcherNPP
 
         public void Validate()
         {
+            if (PayloadMode != "strict" && PayloadMode != "extended")
+                throw new ArgumentException("PayloadMode must be strict or extended.");
             if (Port < 1 || Port > 65535) throw new ArgumentException("Port must be 1–65535.");
             if (FrequencySeconds < 1 || FrequencySeconds > 60)
                 throw new ArgumentException("FrequencySeconds must be 1–60.");

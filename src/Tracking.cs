@@ -7,12 +7,14 @@ namespace AwWatcherNPP
     public sealed class EditorActivity
     {
         public DateTimeOffset Timestamp { get; }
+        public bool StartsInterval { get; }
         public string File { get; }
         public string Language { get; }
 
-        public EditorActivity(DateTimeOffset timestamp, string file, string language)
+        public EditorActivity(DateTimeOffset timestamp, string file, string language, bool startsInterval = false)
         {
             Timestamp = timestamp;
+            StartsInterval = startsInterval;
             File = file;
             Language = language ?? "Text";
         }
@@ -37,7 +39,8 @@ namespace AwWatcherNPP
             if (last != null && last.File == file && last.Language == language &&
                 monotonicMilliseconds - lastTick < settings.FrequencySeconds * 1000L)
                 return null;
-            last = new EditorActivity(timestamp, file, language);
+            last = new EditorActivity(timestamp, file, language, last == null ||
+                monotonicMilliseconds - lastTick > (settings.FrequencySeconds + 1) * 1000L);
             lastTick = monotonicMilliseconds;
             return last;
         }
@@ -58,10 +61,10 @@ namespace AwWatcherNPP
                     foreach (var marker in new[] { ".git", ".hg", ".svn" })
                     {
                         var path = Path.Combine(directory.FullName, marker);
-                        if (Directory.Exists(path) || System.IO.File.Exists(path)) return directory.Name;
+                        if (Directory.Exists(path) || System.IO.File.Exists(path)) return directory.FullName;
                     }
                 }
-                return start.Name;
+                return start.FullName;
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException ||
                 ex is ArgumentException || ex is System.Security.SecurityException)

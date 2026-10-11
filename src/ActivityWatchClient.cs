@@ -51,15 +51,30 @@ namespace AwWatcherNPP
                     client = ClientName, hostname, type = "app.editor.activity"
                 }, cancellation).ConfigureAwait(false);
                 if (status == HttpStatusCode.NotFound) throw new HttpRequestException("Bucket endpoint not found.");
+                if (status == HttpStatusCode.NotModified)
+                {
+                    using (var existing = await http.GetAsync(bucketPath, cancellation).ConfigureAwait(false))
+                    {
+                        if (!existing.IsSuccessStatusCode)
+                            throw new HttpRequestException("Cannot verify existing bucket: HTTP " + (int)existing.StatusCode);
+                        Dictionary<string, object> metadata;
+                        try { metadata = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(
+                            await existing.Content.ReadAsStringAsync().ConfigureAwait(false)); }
+                        catch (ArgumentException) { throw new HttpRequestException("Invalid bucket metadata."); }
+                        object type;
+                        if (metadata == null || !metadata.TryGetValue("type", out type) ||
+                            !string.Equals(type as string, "app.editor.activity", StringComparison.Ordinal))
+                            throw new HttpRequestException("Existing bucket has incompatible type.");
+                    }
+                }
                 bucketReady = true;
             }
             var heartbeat = new {
                 timestamp = activity.Timestamp.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture),
                 duration = 0,
-                data = new { file = activity.File, project = ProjectResolver.Resolve(activity.File),
-                    language = activity.Language }
+                data = BuildData(activity)
             };
-            var result = await Post(bucketPath + "/heartbeat?pulsetime=" + settings.PulseTimeSeconds,
+            var result = await Post(bucketPath + "/heartbeat?pulsetime=" + (activity.StartsInterval ? 0 : settings.PulseTimeSeconds),
                 heartbeat, cancellation).ConfigureAwait(false);
             if (result == HttpStatusCode.NotFound)
             {
@@ -68,6 +83,32 @@ namespace AwWatcherNPP
             }
             if (result == HttpStatusCode.NotModified)
                 throw new HttpRequestException("Unexpected heartbeat response: 304.");
+        }
+
+        private static string Basename(string value)
+        {
+            // Unsaved tab labels are display text, not necessarily valid filesystem paths.
+            var normalized = value.Replace('\\', '/');
+            return normalized.Substring(normalized.LastIndexOf('/') + 1);
+        }
+
+        internal Dictionary<string, object> BuildData(EditorActivity activity)
+        {
+            var file = settings.IncludeFile ? activity.File : "";
+            var project = settings.IncludeProjectPath || (settings.PayloadMode == "extended" && settings.IncludeProjectName)
+                ? ProjectResolver.Resolve(activity.File) : "";
+            var data = new Dictionary<string, object> {
+                ["file"] = file.Replace('\\', '/'),
+                ["project"] = settings.IncludeProjectPath ? project.Replace('\\', '/') : "",
+                ["language"] = settings.IncludeLanguage ? activity.Language : "",
+                ["title"] = string.IsNullOrEmpty(file) ? "Activity (context unavailable)" : Basename(file)
+            };
+            if (settings.PayloadMode == "extended")
+            {
+                if (settings.IncludeFilename && settings.IncludeFile) data.Add("filename", Basename(file));
+                if (settings.IncludeProjectName) data.Add("project_name", Basename(project));
+            }
+            return data;
         }
 
         public void Dispose() { http.Dispose(); }
@@ -85,6 +126,7 @@ namespace AwWatcherNPP
         private readonly int capacity;
         private readonly Action<string> report;
         private bool disposed;
+        private bool droppedGap;
         public int Dropped { get; private set; }
         public int PendingCount { get { lock (gate) return pending.Count; } }
 
@@ -110,8 +152,12 @@ namespace AwWatcherNPP
                 {
                     // Keep the oldest (possibly in flight) event and reject newest on overflow.
                     Dropped++;
+                    droppedGap = true;
                     return;
                 }
+                if (droppedGap)
+                    activity = new EditorActivity(activity.Timestamp, activity.File, activity.Language, true);
+                droppedGap = false;
                 pending.Enqueue(activity);
                 wake.Set();
             }
