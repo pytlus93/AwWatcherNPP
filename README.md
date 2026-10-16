@@ -88,7 +88,10 @@ File and language changes produce an immediate heartbeat. While focused, reading
 is counted until the idle timeout. Switching to another application pauses tracking.
 
 When enabled, the project path comes from the nearest version-control root, or the file's parent
-folder when there is no root. Unsaved buffers use their tab label and an empty project.
+folder when there is no root. Unsaved buffers are tracked too: their title is `new 1 [unsaved]`, `new 2 [unsaved]`,
+etc., while `file` retains the tab label and project stays empty. Saving the buffer
+switches to its saved filename/path. Tab labels are not stable identities across
+sessions or reused tabs. The File / title privacy setting also hides unsaved labels.
 
 Events use ActivityWatch's `app.editor.activity` bucket type and contain `file`,
 `project`, and `language` fields plus the workspace-required `title`. See [data contract](DATA-CONTRACT.md) for settings, migration and privacy. Combine them with ActivityWatch's window and AFK

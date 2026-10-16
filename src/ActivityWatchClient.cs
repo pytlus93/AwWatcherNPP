@@ -92,6 +92,15 @@ namespace AwWatcherNPP
             return normalized.Substring(normalized.LastIndexOf('/') + 1);
         }
 
+        private static string ActivityTitle(string file)
+        {
+            if (string.IsNullOrEmpty(file)) return "Activity (context unavailable)";
+            bool savedPath;
+            try { savedPath = System.IO.Path.IsPathRooted(file); }
+            catch (ArgumentException) { savedPath = false; }
+            return Basename(file) + (savedPath ? "" : " [unsaved]");
+        }
+
         internal Dictionary<string, object> BuildData(EditorActivity activity)
         {
             var file = settings.IncludeFile ? activity.File : "";
@@ -101,7 +110,7 @@ namespace AwWatcherNPP
                 ["file"] = file.Replace('\\', '/'),
                 ["project"] = settings.IncludeProjectPath ? project.Replace('\\', '/') : "",
                 ["language"] = settings.IncludeLanguage ? activity.Language : "",
-                ["title"] = string.IsNullOrEmpty(file) ? "Activity (context unavailable)" : Basename(file)
+                ["title"] = ActivityTitle(file)
             };
             if (settings.PayloadMode == "extended")
             {

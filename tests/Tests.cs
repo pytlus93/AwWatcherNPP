@@ -105,15 +105,27 @@ namespace AwWatcherNPP
                 Check(string.Join(",", data.Keys) == "file,project,language,title", "Strict field order");
                 Check((string)data["title"] == "demo.cs", "Concise title");
                 Check((string)data["project"] == "", "Private project path default");
+                var unsaved = new EditorActivity(time, "new 1", "Text");
+                var unsavedData = client.BuildData(unsaved);
+                Check((string)unsavedData["title"] == "new 1 [unsaved]" &&
+                    (string)unsavedData["file"] == "new 1" && (string)unsavedData["project"] == "", "Unsaved tab context");
+                Check((string)client.BuildData(new EditorActivity(time, "new 2", "Text"))["title"] == "new 2 [unsaved]", "Unsaved tabs indistinguishable");
                 settings.PayloadMode = "extended";
                 settings.IncludeFilename = true;
                 Check((string)client.BuildData(activity)["filename"] == "demo.cs", "Filename is full path");
                 settings.IncludeFile = false;
                 settings.IncludeLanguage = false;
+                Check((string)client.BuildData(unsaved)["title"] == "Activity (context unavailable)" &&
+                    !client.BuildData(unsaved).ContainsKey("filename"), "Unsaved privacy leak");
                 data = client.BuildData(activity);
                 Check(!data.ContainsKey("filename") && (string)data["file"] == "" &&
                     (string)data["title"] == "Activity (context unavailable)" && (string)data["language"] == "", "Disabled context leaked");
             }
+            var unsavedTracker = new ActivityTracker(new Settings());
+            Check(unsavedTracker.Observe("new 1", "Text", true, time, 0) != null, "Unsaved activity skipped");
+            Check(unsavedTracker.Observe("new 2", "Text", true, time, 1) != null, "Unsaved tab switch delayed");
+            Check(unsavedTracker.Observe("new 2", "Text", false, time, 2) == null, "Unsaved background tracked");
+            Check(unsavedTracker.Observe(@"C:\Synthetic\saved.txt", "Text", true, time, 3) != null, "Save transition skipped");
             var tracker = new ActivityTracker(settings);
             Check(tracker.Observe("a", "Text", true, time, 0).StartsInterval, "Initial boundary missing");
             tracker.Observe("a", "Text", false, time, 1000);

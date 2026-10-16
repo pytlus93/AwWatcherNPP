@@ -17,7 +17,7 @@ disabled extensions are absent. Titles never contain document contents.
 | file | string; active saved path `C:/Work/demo.cs`, or unsaved tab label `new 1` | Every observation; empty when IncludeFile=false; missing host context produces no observation | Path/tab metadata; IncludeFile=true preserves existing collection |
 | project | string; inferred root/parent path `C:/Work` | Saved files only; empty when disabled or resolution fails | Additional full directory metadata; IncludeProjectPath=false |
 | language | string; editor language/extension override `C#` | Every observation; Text fallback from host, empty when disabled | File type or user-defined label; IncludeLanguage=true |
-| title | string; concise filename/tab label `demo.cs` | Every observation; Activity (context unavailable) when file disabled | Basename only; mandatory; respects IncludeFile |
+| title | string; concise filename `demo.cs` or `new 1 [unsaved]` | Every observation; Activity (context unavailable) when file disabled | Basename only; mandatory; respects IncludeFile |
 | filename | string; basename `demo.cs` | Extended, IncludeFilename and IncludeFile; absent otherwise | Filename; IncludeFilename=false |
 | project_name | string; root/parent basename `Work` | Extended and IncludeProjectName; empty if unsaved/unavailable, absent if disabled | Directory name; IncludeProjectName=false |
 
@@ -40,3 +40,12 @@ not this revised contract or installed-version compatibility.
 `Enabled` defaults true. Turning off Enable tracking stops sampling and cancels
 delivery, discards the in-memory backlog, and remains stopped after host restart.
 Turning it on constructs one sender and one timer; no standalone relauncher exists.
+
+Unsaved buffers with a host-provided non-rooted label remain trackable. The title
+adds `[unsaved]`; file and optional filename retain the label. If the full-path
+query is empty, the plugin requests the current filename/tab label. If both are
+unavailable, sampling skips unknown context rather than inventing an identity.
+The marker means no saved path, not pending edits in an already named file.
+Tab names can be reused and are not durable IDs. No buffer contents are read.
+Notepad++ can itself derive tab labels from content; disable File / title to avoid
+sending such labels if that host preference is enabled.

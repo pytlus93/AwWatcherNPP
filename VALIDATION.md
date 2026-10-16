@@ -90,3 +90,18 @@ Reviewed official [watchers](https://docs.activitywatch.net/en/latest/watchers.h
 [REST API](https://docs.activitywatch.net/en/latest/api/rest.html).
 See DATA-CONTRACT.md for the official editor schema versus workspace additions,
 privacy controls, migration, unavailable behavior and presentation limitations.
+
+## Unsaved-tab follow-up — 2026-10-16
+
+Both local x64/x86 build/test/package commands PASS, 106 assertions each, including
+native exports and loopback HTTP. Added tests verify new 1/new 2 tracking and immediate
+switches, saved-path transition, no background sampling, title markers and privacy
+redaction. File retains the host tab label; title adds [unsaved] for non-rooted labels.
+Source adds NPPM_GETFILENAME fallback when NPPM_GETFULLCURRENTPATH is empty.
+The official Notepad++ message header defines these as RUNCOMMAND_USER+3 and +1:
+https://github.com/notepad-plus-plus/notepad-plus-plus/blob/master/PowerEditor/src/MISC/PluginsManager/Notepad_plus_msgs.h
+Tab name behavior and content-derived labels are documented in:
+https://npp-user-manual.org/docs/user-interface/
+Live editor fallback behavior, session restoration and GUI tooltip rendering remain
+unverified. No installed DLL was replaced, no new AW history was written, and no
+GitHub workflow was added. Updated packages are local under dist/.

@@ -175,6 +175,9 @@ namespace AwWatcherNPP
             if (!active) { tracker.Observe(null, null, false, DateTimeOffset.UtcNow, elapsed.ElapsedMilliseconds); return; }
             var file = new StringBuilder(32768);
             SendMessage(host.Window, 1024 + 3000 + 1, new IntPtr(file.Capacity), file);
+            // Some host versions return no full path for a new buffer; use its tab name.
+            if (file.Length == 0)
+                SendMessage(host.Window, 1024 + 3000 + 3, new IntPtr(file.Capacity), file);
             int language;
             SendMessageInt(host.Window, NppMessage + 5, IntPtr.Zero, out language);
             var languageName = new StringBuilder(256);
