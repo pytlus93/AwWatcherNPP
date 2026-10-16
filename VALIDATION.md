@@ -105,3 +105,17 @@ https://npp-user-manual.org/docs/user-interface/
 Live editor fallback behavior, session restoration and GUI tooltip rendering remain
 unverified. No installed DLL was replaced, no new AW history was written, and no
 GitHub workflow was added. Updated packages are local under dist/.
+
+## Fresh validation — 2026-10-16
+
+Current source at 3342f25: x64 and x86 build/test/package PASS, 106 assertions
+per architecture including native exports and synthetic loopback protocol checks.
+The restricted initial test could not connect to loopback; the successful rerun
+used approved execution outside the sandbox with checkout-local TEMP/TMP.
+
+Read-only production inspection found Notepad++ running and an installed DLL dated
+2026-10-05. Its SHA256 differs from the current x64 build. The latest three AW
+events were from October 12, each zero-duration, with file/language/project and no
+title. This confirms historical receipt by the installed older build, not current
+source acceptance or ongoing capture. No DLL was replaced and no host/server was
+restarted. Real-host acceptance of the current build remains outstanding.
