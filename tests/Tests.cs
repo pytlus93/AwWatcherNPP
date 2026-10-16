@@ -230,6 +230,15 @@ namespace AwWatcherNPP
             finally { Directory.Delete(root, true); } // exact unique test directory created above
         }
 
+        private sealed class Bodyless304Content : HttpContent
+        {
+            protected override bool TryComputeLength(out long length) { length = 67; return true; }
+            protected override Task SerializeToStreamAsync(Stream stream, TransportContext context)
+            {
+                throw new IOException("A bodyless 304 must not be buffered by the client.");
+            }
+        }
+
         private sealed class FakeServer : HttpMessageHandler
         {
             public readonly List<string> Paths = new List<string>();
@@ -258,7 +267,9 @@ namespace AwWatcherNPP
                 }
                 if (request.RequestUri.AbsolutePath.EndsWith("/heartbeat") && response == HttpStatusCode.OK)
                     Interlocked.Increment(ref SuccessfulHeartbeats);
-                return new HttpResponseMessage(response);
+                return new HttpResponseMessage(response) {
+                    Content = response == HttpStatusCode.NotModified ? new Bodyless304Content() : null
+                };
             }
         }
 

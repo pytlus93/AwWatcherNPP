@@ -119,3 +119,21 @@ events were from October 12, each zero-duration, with file/language/project and 
 title. This confirms historical receipt by the installed older build, not current
 source acceptance or ongoing capture. No DLL was replaced and no host/server was
 restarted. Real-host acceptance of the current build remains outstanding.
+
+## AW Rust 304 timeout fix — 2026-10-16
+
+The installed plugin queued observations while the deployed v0.14.0 (rust) API
+remained reachable and the existing bucket type matched app.editor.activity.
+The old .NET transport reproduced TaskCanceledException with the real-server test.
+Disabling Expect: 100-continue did not fix it and was reverted. The deployed
+existing-bucket 304 includes Content-Length: 67 without an event response body.
+POST now uses ResponseHeadersRead because initialization/heartbeat handling only
+needs response status. Existing metadata verification still reads the GET body.
+The fake 304 content regression throws if the caller tries to buffer a body.
+
+Local x64/x86 build/test/package passes: 106 assertions each. The x64 real-server
+opt-in passes 111 assertions against AW v0.14.0 Rust, including producer restart,
+bucket type check, resumed delivery and preserved gap. API reordered strict data
+keys to file,language,project,title; serializer order is not a GUI order guarantee.
+Synthetic validation buckets were cleaned up. Installed-host queue recovery still
+requires loading the updated DLL; replacing a live process discards its memory queue.

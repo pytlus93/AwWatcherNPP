@@ -34,7 +34,11 @@ namespace AwWatcherNPP
         {
             var json = new JavaScriptSerializer().Serialize(data);
             using (var content = new StringContent(json, Encoding.UTF8, "application/json"))
-            using (var response = await http.PostAsync(path, content, cancellation).ConfigureAwait(false))
+            using (var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = content })
+            // Only status is needed. In particular, a 304 has no response body even
+            // when a server supplies Content-Length for its selected representation.
+            using (var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead,
+                cancellation).ConfigureAwait(false))
             {
                 if (!response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.NotModified &&
                     response.StatusCode != HttpStatusCode.NotFound)
