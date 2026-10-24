@@ -22,7 +22,7 @@ Both architectures have build and synthetic protocol/native-export evidence. The
 
 ## Install or upgrade
 
-Build a package or check [repository releases](https://github.com/pytlus93/AwWatcherNPP/releases) for a matching archive. Close Notepad++, then extract the `AwWatcherNPP` folder into its `plugins` directory. For a standard x64 installation:
+Build a package or check [repository releases](https://github.com/pytlus93/aw-watcher-notepadpp/releases) for a matching archive. Close Notepad++, then extract the `AwWatcherNPP` folder into its `plugins` directory. For a standard x64 installation:
 
 ```text
 C:\Program Files\Notepad++\plugins\AwWatcherNPP\AwWatcherNPP.dll
