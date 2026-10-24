@@ -1,0 +1,43 @@
+name: CI_build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+    env:
+      Projectname: AwWatcherNPP
+    strategy:
+      fail-fast: false
+      matrix:
+        build_platform: [x64, x86]
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v7
+
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v3
+
+    - name: Build of plugin dll via script
+      working-directory: .\
+      run: |
+           .\scripts\build.ps1 -Platform ${{ matrix.build_platform }} -Test -Package
+
+    - name: MSBuild of plugin dll Debug
+      working-directory: .\
+      run: |
+           msbuild ${{ env.Projectname }}.csproj  /p:configuration=Debug /p:platform="${{ matrix.build_platform }}"
+
+    - name: Archive artifacts for Release ${{ matrix.build_platform }}
+      uses: actions/upload-artifact@v7
+      with:
+        path: .\dist\aw-watcher-notepadpp-**-${{ matrix.build_platform }}.zip
+        archive: false
+
+    - name: Create release on tagging
+      uses: softprops/action-gh-release@v3
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: aw-watcher-notepadpp-**-${{ matrix.build_platform }}.zip
