@@ -1,147 +1,84 @@
-# AwWatcherNPP — ActivityWatch for Notepad++
+# ActivityWatch for Notepad++
 
-Track the files, projects, and programming languages you work on in Notepad++ with
-[ActivityWatch](https://activitywatch.net). Your activity stays on your computer.
+A Notepad++ plugin that records active file and language context in local [ActivityWatch](https://activitywatch.net). It samples while the editor is foreground and stops after the configured Windows input-idle timeout. It does not capture document contents.
 
 ## Features
 
-- Records the active file, project name, and editor language.
-- Detects Git, Mercurial, and Subversion project roots, including Git worktrees.
-- Supports custom language names for file extensions.
-- Includes a settings dialog with an editable language-mapping table.
-- Tracks only while Notepad++ is in the foreground and pauses after inactivity.
-- Sends heartbeats in the background and retries when ActivityWatch is unavailable.
-- Provides 64-bit and 32-bit plugins for Windows.
-
-The plugin records enabled file metadata, never document contents. It sends data
-only to the local ActivityWatch server; no account or API key is required.
+- Tracks saved files and unsaved tabs while Notepad++ is foreground and active.
+- Optionally detects Git, Mercurial and Subversion project roots, including Git worktrees.
+- Supports custom language mappings and individual context/privacy controls.
+- Delivers activity locally, with background retries when ActivityWatch is unavailable.
+- Provides x64 and x86 plugins for Windows.
 
 ## Requirements
 
 - Windows with .NET Framework 4.8.
-- Unicode Notepad++ (64-bit or 32-bit; ARM64 is not supported).
+- Unicode Notepad++ x64 or x86; ARM64 is not supported.
 - ActivityWatch running locally, normally on port `5600`.
 
-Version 0.1.0 is an initial implementation. Both architectures have automated build
-and protocol tests; validation inside a real Notepad++ installation is still pending.
+Both architectures have build and synthetic protocol/native-export evidence. The installed older plugin has real event receipt; acceptance of the current DLL inside Notepad++ remains separate. See [validation](VALIDATION.md).
 
-## Installation
+## Install or upgrade
 
-1. Get the archive matching your Notepad++ architecture from
-   [Releases](https://github.com/pytlus93/AwWatcherNPP/releases), when available,
-   or build it from source using the instructions below.
-2. Close Notepad++.
-3. Extract the `AwWatcherNPP` folder into your Notepad++ `plugins` directory.
-   The resulting path must be `plugins/AwWatcherNPP/AwWatcherNPP.dll`.
-4. Start ActivityWatch and restart Notepad++.
-
-For a standard 64-bit installation, the DLL belongs at:
+Build a package or check [repository releases](https://github.com/pytlus93/AwWatcherNPP/releases) for a matching archive. Close Notepad++, then extract the `AwWatcherNPP` folder into its `plugins` directory. For a standard x64 installation:
 
 ```text
 C:\Program Files\Notepad++\plugins\AwWatcherNPP\AwWatcherNPP.dll
 ```
 
-Use **Plugins → ActivityWatch → Open ActivityWatch** to open the dashboard.
-Recorded events appear in **Raw Data** under `aw-watcher-notepadpp_<hostname>`.
+Replace the matching-architecture DLL when upgrading; settings are stored separately. Restart Notepad++ and start ActivityWatch normally. **Plugins → ActivityWatch → Open ActivityWatch** opens the dashboard. Inspect `aw-watcher-notepadpp_<hostname>` in Raw Data to verify receipt.
 
-## Settings
+## Configuration and everyday use
 
-Choose **Plugins → ActivityWatch → Settings…** to change tracking options and
-language overrides. Use **Add** to create a mapping or **Remove** to delete selected
-rows. Click **Save** to apply changes immediately; **Cancel** leaves your settings
-unchanged. Duplicate extensions, incomplete rows, and invalid intervals are rejected.
+Open **Plugins → ActivityWatch → Settings…**. Save applies settings; Cancel discards edits. Disabling tracking stops sampling/delivery, discards pending observations and persists across editor restarts.
 
 ![ActivityWatch settings dialog with a language-mapping table](assets/settings.png)
 
-The plugin saves settings in `AwWatcherNPP.json` in Notepad++'s plugin configuration
-directory. Existing JSON settings remain supported. For example:
+| Setting | New configuration default |
+| --- | --- |
+| Tracking | Enabled |
+| Port / Testing | `5600` / off; testing maps default port to `5666` |
+| Heartbeat / pulse time | 5 / 20 seconds |
+| Idle timeout | 180 seconds |
+| Pending capacity | 1000 observations in memory |
+| Payload | Strict; file and language enabled; project path and extended fields off |
 
-```json
-{
-  "Port": 5600,
-  "Testing": false,
-  "FrequencySeconds": 5,
-  "PulseTimeSeconds": 20,
-  "IdleSeconds": 180,
-  "QueueCapacity": 1000,
-  "Languages": {
-    "tpl": "Template",
-    "mdx": "Markdown"
-  }
-}
-```
+Strict sends editor fields `file`, `project`, `language` plus this plugin's readable `title`; disabled standard context becomes an empty string. Extended mode adds selected `filename`/`project_name`. Privacy choices also restrict titles. See [the field catalog](DATA-CONTRACT.md) for defaults and migration.
 
-- `FrequencySeconds`: heartbeat interval, from 1 to 60 seconds.
-- `PulseTimeSeconds`: maximum gap for merging matching heartbeats; at least the
-  heartbeat interval and at most 120 seconds.
-- `IdleSeconds`: pause after this many seconds without Windows input.
-- `QueueCapacity`: maximum number of pending heartbeats, from 1 to 10,000.
-- `Languages`: extension overrides; matching ignores case. A leading dot is optional
-  in the table and removed on save. Wildcards and compound extensions are rejected.
-- `Testing`: selects port `5666` when `Port` is left at `5600`.
+Language mappings use one extension and name per table row (for example `tpl` → `Template`). Matching ignores case; duplicate extensions, wildcards and compound extensions are rejected. New configurations have no custom overrides.
 
-Set `Languages` to `{}` to use the editor's language names without overrides.
+Unsaved tabs use their host tab label, with `[unsaved]` in the title, and an empty project. Saved files can optionally use the nearest VCS root or parent directory as project context. Labels are not stable document identities.
+
+Settings are in `AwWatcherNPP.json` in the host's plugin configuration directory; the fallback is `%APPDATA%\AwWatcherNPP`. Earlier JSON settings remain supported. Changing privacy choices does not erase existing AW history.
 
 ## Tracking behavior
 
-File and language changes produce an immediate heartbeat. While focused, reading
-is counted until the idle timeout. Switching to another application pauses tracking.
+File and language changes trigger an immediate observation. While Notepad++ is
+foreground, sampling continues until the Windows input-idle timeout. Switching to
+another application or becoming idle stops collection; returning starts a new
+interval. Missing collection is left as a gap.
 
-When enabled, the project path comes from the nearest version-control root, or the file's parent
-folder when there is no root. Unsaved buffers are tracked too: their title is `new 1 [unsaved]`, `new 2 [unsaved]`,
-etc., while `file` retains the tab label and project stays empty. Saving the buffer
-switches to its saved filename/path. Tab labels are not stable identities across
-sessions or reused tabs. The File / title privacy setting also hides unsaved labels.
-
-Events use ActivityWatch's `app.editor.activity` bucket type and contain `file`,
-`project`, and `language` fields plus the workspace-required `title`. See [data contract](DATA-CONTRACT.md) for settings, migration and privacy. Combine them with ActivityWatch's window and AFK
-information when calculating time; overlapping watcher totals should not be added.
-
-Pending heartbeats are kept in memory and retried in order, including when settings
-are changed. A full queue rejects
-new events, and pending events are lost when Notepad++ exits or crashes.
-
-Focus/idle returns and sampling gaps larger than the heartbeat interval plus one
-second begin a new interval with `pulsetime=0`. Queue overflow also marks the next
-accepted observation as a boundary. Retries retain observation UTC timestamps.
-Server outages with uninterrupted, successfully queued observations retain observed
-activity; collection gaps are not filled with stale observations.
-
-See [validation evidence and limitations](VALIDATION.md).
+When ActivityWatch is unavailable, queued observations retry in order with their
+original timestamps. The queue is bounded; when full, new observations are dropped.
+Closing or crashing Notepad++ loses pending observations because the queue is kept
+in memory.
 
 ## Troubleshooting
 
-Check **Plugins → ActivityWatch → Status** for connection status and queued or
-dropped events. Confirm that ActivityWatch is running on the configured port and
-that the DLL architecture matches Notepad++.
+Use **Plugins → ActivityWatch → Status** for delivery/queue information. Check DLL architecture, server port, tracking enablement, foreground state and idle timeout. Invalid settings disable capture until corrected.
 
-Diagnostics are written to `AwWatcherNPP.log` beside the configuration file without
-file paths or document contents. Invalid settings disable tracking until corrected.
-If Notepad++ cannot provide its configuration directory, the fallback is
-`%APPDATA%/AwWatcherNPP`.
+`AwWatcherNPP.log` sits beside the config and excludes paths/document contents. Pending observations are memory-only, bounded and lost when the host exits. Delivery retries preserve observation times; collection gaps remain gaps. Combine editor data with AW window/AFK information rather than summing overlapping watcher durations.
 
-## Building and contributing
+## Local development
 
-Install Visual Studio with MSBuild and the .NET Framework 4.8 developer pack, then
-run from the repository root:
+Requires MSBuild and the .NET Framework 4.8 developer pack. The first build downloads pinned DllExport tooling if absent.
 
 ```powershell
 ./scripts/build.ps1 -Platform x64 -Test -Package
 ./scripts/build.ps1 -Platform x86 -Test -Package
 ```
 
-The first build downloads pinned export tooling into `.tools/`. Release archives
-are generated in `dist/`. Tests cover tracking, event serialization, HTTP requests,
-retry recovery, queue limits, cancellation, and native plugin exports.
-
-Before submitting a change, run the tests and check file switching, editing,
-saving, Unicode paths, both editor panes, idle behavior, and server recovery in
-Notepad++. Include your Notepad++ version, architecture, and validation results
-in bug reports or pull requests.
-
-See the [ActivityWatch watcher guide](https://docs.activitywatch.net/en/latest/watchers.html#custom-watchers)
-and [REST API documentation](https://docs.activitywatch.net/en/latest/api/rest.html)
-for integration details.
+Packages are written to `dist/`. [Validation](VALIDATION.md) distinguishes synthetic HTTP/native checks, installed receipt and outstanding host/UI/reboot acceptance. [The data contract](DATA-CONTRACT.md) describes transport boundaries and privacy.
 
 ## Thanks
 
@@ -151,4 +88,4 @@ plugin integration provided the starting point for this watcher.
 
 ## License
 
-[BSD 3-Clause](LICENSE.txt), including attribution for adapted plugin integration.
+[BSD 3-Clause](LICENSE.txt), including adapted integration code attributed to Alan Hamlett and contributors to the WakaTime Notepad++ plugin.
