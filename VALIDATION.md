@@ -1,5 +1,29 @@
 # Validation — 2026-10-11
 
+## Release 1.0.0 audit — 2026-10-24
+
+Reviewed the official watcher-writing and editor-contract documentation linked below.
+Client and bucket prefix already follow `aw-watcher-notepadpp`; retain the existing
+repository, DLL and installation-folder identities. Because this is a host plugin,
+Settings exposes Testing and Port instead of standalone CLI flags. Testing maps
+the default 5600 to 5666; an explicit nondefault port takes precedence. Existing
+tests cover these settings, privacy/title redaction, UTC timestamps, schema checks,
+producer restart, delayed server availability and resumed heartbeat delivery.
+The throwing bodyless-304 content regression covers nonzero Content-Length without
+buffering; heartbeat 304 and incompatible bucket types remain errors.
+
+Fresh x64 and x86 `scripts/build.ps1 -Platform <architecture> -Test -Package`:
+PASS, 106 assertions per architecture, including native DLL exports and synthetic
+loopback HTTP. No compiler warnings were reported. The first restricted x64 run
+was blocked by loopback socket permissions; successful runs used approved execution
+outside the sandbox and checkout-local TEMP/TMP. Release packaging verifies DLL
+product version 1.0.0 and file version 1.0.0.0 and writes SHA256 sidecars.
+
+This release changes version metadata, packaging and documentation; collection and
+transport behavior are unchanged. No new installed-editor, reboot, interactive UI
+or deployed-server acceptance was performed. Earlier deployed-server evidence below
+remains historical evidence, not a fresh 1.0.0 host acceptance claim.
+
 ## Build and synthetic evidence
 
 Visual Studio installation 18.10.12224.181, MSBuild, .NET Framework 4.8 target,

@@ -1,5 +1,7 @@
 # ActivityWatch for Notepad++
 
+Version **1.0.0**. ActivityWatch client identity: `aw-watcher-notepadpp`.
+
 A Notepad++ plugin that records active file and language context in local [ActivityWatch](https://activitywatch.net). It samples while the editor is foreground and stops after the configured Windows input-idle timeout. It does not capture document contents.
 
 ## Features
@@ -29,6 +31,11 @@ C:\Program Files\Notepad++\plugins\AwWatcherNPP\AwWatcherNPP.dll
 Replace the matching-architecture DLL when upgrading; settings are stored separately. Restart Notepad++ and start ActivityWatch normally. **Plugins → ActivityWatch → Open ActivityWatch** opens the dashboard. Inspect `aw-watcher-notepadpp_<hostname>` in Raw Data to verify receipt.
 
 ## Configuration and everyday use
+
+This DLL runs inside Notepad++, so testing and custom-port options are host settings
+rather than standalone `--testing` / `--port` arguments. Testing selects `5666` when
+the configured port is `5600`; an explicit nondefault port takes precedence.
+The existing DLL/folder name `AwWatcherNPP` is retained for host compatibility.
 
 Open **Plugins → ActivityWatch → Settings…**. Save applies settings; Cancel discards edits. Disabling tracking stops sampling/delivery, discards pending observations and persists across editor restarts.
 
@@ -78,7 +85,12 @@ Requires MSBuild and the .NET Framework 4.8 developer pack. The first build down
 ./scripts/build.ps1 -Platform x86 -Test -Package
 ```
 
-Packages are written to `dist/`. [Validation](VALIDATION.md) distinguishes synthetic HTTP/native checks, installed receipt and outstanding host/UI/reboot acceptance. [The data contract](DATA-CONTRACT.md) describes transport boundaries and privacy.
+Packages are written to `dist/aw-watcher-notepadpp-1.0.0-x64.zip` and
+`dist/aw-watcher-notepadpp-1.0.0-x86.zip`, each with a `.sha256` checksum sidecar.
+Each ZIP contains the `AwWatcherNPP` plugin folder ready for extraction into
+Notepad++'s `plugins` directory. The DLL reports product version `1.0.0` and file
+version `1.0.0.0`. [Release notes](CHANGELOG.md) describe this version.
+[Validation](VALIDATION.md) distinguishes synthetic HTTP/native checks, installed receipt and outstanding host/UI/reboot acceptance. [The data contract](DATA-CONTRACT.md) describes transport boundaries and privacy.
 
 ## Thanks
 

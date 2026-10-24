@@ -6,6 +6,11 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
+$versionSource = Get-Content -LiteralPath (Join-Path $repoRoot 'src/AssemblyInfo.cs') -Raw
+if ($versionSource -notmatch 'AssemblyInformationalVersion\("(\d+\.\d+\.\d+)"\)') {
+    throw 'Missing release version in src/AssemblyInfo.cs.'
+}
+$releaseVersion = $Matches[1]
 $toolsRoot = Join-Path $repoRoot '.tools'
 $exportRoot = Join-Path $toolsRoot 'DllExport.1.7.4'
 # Retain the namespace-patched attribute cache alongside its export tool.
@@ -53,5 +58,14 @@ if ($Package) {
     Copy-Item -LiteralPath $dll -Destination $stage
     Copy-Item -LiteralPath (Join-Path $repoRoot 'README.md'), (Join-Path $repoRoot 'LICENSE.txt'), (Join-Path $repoRoot 'DATA-CONTRACT.md'), (Join-Path $repoRoot 'VALIDATION.md') -Destination $stage
     Copy-Item -LiteralPath (Join-Path $repoRoot 'assets') -Destination $stage -Recurse
-    Compress-Archive -Path $stage -DestinationPath (Join-Path $repoRoot "dist/AwWatcherNPP-0.1.0-$Platform.zip") -Force
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'CHANGELOG.md') -Destination $stage
+    $fileVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo($dll)
+    if ($fileVersion.ProductVersion -ne $releaseVersion -or $fileVersion.FileVersion -ne "$releaseVersion.0") {
+        throw 'Built DLL version does not match the release version.'
+    }
+    $archivePath = Join-Path $repoRoot "dist/aw-watcher-notepadpp-$releaseVersion-$Platform.zip"
+    Compress-Archive -Path $stage -DestinationPath $archivePath -Force
+    $checksum = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    [IO.File]::WriteAllText("$archivePath.sha256", "$checksum  $([IO.Path]::GetFileName($archivePath))`n")
+    Write-Output "Release package: $archivePath"
 }
